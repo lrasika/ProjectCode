@@ -1,0 +1,185 @@
+Install Jenkins
+
+Jenkins setup on Ubuntu
+
+
+ubuntu@ip-172-31-29-135:~$ history
+
+sudo apt install default-jdk
+
+sudo update-alternatives --config java
+
+wget -q -O - https://pkg.jenkins.io/debian/jenkins.io.key | sudo apt-key add -
+  
+Then add the following entry in your /etc/apt/sources.list:
+    
+echo deb https://pkg.jenkins.io/debian-stable binary/ | sudo tee /etc/apt/sources.list.d/jenkins.list
+  
+Update your local package index, then finally install Jenkins:
+
+
+  sudo apt-get update
+  sudo apt-get install jenkins
+
+      
+sudo cat /var/lib/jenkins/secrets/initialAdminPassword
+
+Configure the node 
+
+sudo yum -y install java-1.8.0-openjdk git
+
+sudo useradd -d /var/lib/jenkins jenkins
+
+
+
+
+Here are the steps to follow
+1. Create 2 ec2 instances in AWS
+	Ubuntu 18.04 Free Tier
+	Consider one ec2 instance as node1 and other as node2
+2. Install docker in both nodes (ec2 instanaces)
+	sudo apt-get update
+	sudo apt-get install     apt-transport-https     ca-certificates     curl     gnupg-	agent     software-properties-common
+	curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo apt-key add -
+	sudo apt install docker.io
+	sudo apt install docker-compose
+
+ec2-18-234-86-105.compute-1.amazonaws.com:5000/lalith/alpine-lalith
+
+
+Docker registry
+
+sudo groupadd docker
+sudo usermod -aG docker $USER
+newgrp docker 
+
+
+Install dependacies
+sudo apt install -y gnupg2 pass apache2-utils httpie
+
+
+$ docker container stop registry
+To remove the container, use docker container rm.
+
+$ docker container stop registry && docker container rm -v registry
+
+
+3. Install local docker registory in node2
+	
+	https://www.youtube.com/watch?v=8gEs_zefNYA
+
+	mkdir docker-registry
+
+	http://selftuts.com/how-to-host-you-own-docker-registry/
+
+	vi docker-compose.yml
+	
+version: "3"
+services:
+  docker-registry:
+    image: registry:2
+    container_name: docker-registry
+    ports:
+    - 5000:5000
+    restart: always
+    volumes:
+    - ./docker-registry:/var/lib/registry
+
+  docker-registry-ui:
+    image: konradkleine/docker-registry-frontend:v2
+    container_name: docker-registry-ui
+    ports:
+    - 8081:80
+    environment:
+      ENV_DOCKER_REGISTRY_HOST: docker-registry
+      ENV_DOCKER_REGISTRY_PORT: 5000
+
+
+	create a directory before and after (volume)
+
+running with sudo can fix your problem but you should ensure that your user can access to Docker engine with the current privileges without sudo. Solution is so simple.
+
+Both nodes
+
+
+
+	docker-compose -f docker-compose.yml up
+
+4. Open the brower and enter the public URL to access local docker registry
+
+eg: http://54.147.181.39:8081/home
+http://ec2-54-147-181-39.compute-1.amazonaws.com:8081/home
+
+5. Move to node1 and do the following
+	1.  mkdir registry-app
+	2.  cd registry-app
+	3.  sudo vi /etc/hosts
+	4.  add the entry to access the local docker registry
+		54.147.181.39 ec2-54-147-181-39.compute-1.amazonaws.com:8081/
+	5. update the following and add the entry
+		sudo vi /etc/docker/daemon.json
+		{
+    			"insecure-registries" : ["ec2-54-147-181-39.compute-1.amazonaws.com:5000"]
+		}
+6. Do the following steps
+	sudo service docker stop
+	sudo service docker start
+
+	docker images
+
+	docker pull alpine
+
+	update the image locally
+		docker tag alpine:latest ec2-54-147-181-39.compute-1.amazonaws.com:5000/lalith:v1
+
+	push to the registry
+		docker push ec2-54-147-181-39.compute-1.amazonaws.com:5000/lalith:v1
+
+	docker rmi <image> to remove it locally
+
+
+
+Docker Registy automatically
+ docker run -d \
+  -p 5000:5000 \
+  --restart=always \
+  --name registry \
+  registry:2
+
+customise port
+docker run -d \
+  -p 5001:5000 \
+  --name registry-test \
+  registry:2
+
+To customize storange
+docker run -d \
+  -p 5000:5000 \
+  --restart=always \
+  --name registry \
+  -v /mnt/registry:/var/lib/registry \
+  registry:2
+
+
+
+Run an externally-accessible registry
+
+
+
+
+docker run -d \
+  -p 5000:5000 \
+  --restart=always \
+  --name registry \
+  registry:2
+
+
+
+<<Remove a docker image with same tag and image id
+docker images | grep 0969080bba4a | awk '{print $1 ":" $2}' | xargs docker rmi
+
+
+Justify headcount
+Sync up with Darrell - Technical questions
+
+
